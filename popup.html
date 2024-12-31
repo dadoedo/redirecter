@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      width: 350px;
+      min-height: 400px;
+    }
+    .site-item {
+      animation: fadeIn 0.3s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .empty-state {
+      height: 200px;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;  /* Reduced from 60px */
+      height: 24px; /* Reduced from 34px */
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px; /* Reduced from 26px */
+      width: 18px;  /* Reduced from 26px */
+      left: 3px;    /* Adjusted from 4px */
+      bottom: 3px;  /* Adjusted from 4px */
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #2196F3;
+    }
+    input:checked + .slider:before {
+      transform: translateX(16px); /* Adjusted from 26px */
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.show {
+      display: flex;
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-10px); }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 p-4">
+<div class="max-w-md mx-auto">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold text-gray-800">Site Blocker</h1>
+    <span id="siteCount" class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">0 sites</span>
+  </div>
+
+  <!-- Add Site Section (Prioritized) -->
+  <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+    <form id="addSiteForm" class="flex gap-2">
+      <div class="flex-1">
+        <input
+                type="text"
+                id="siteInput"
+                placeholder="Enter website (e.g., facebook.com)"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+        >
+      </div>
+      <button
+              type="submit"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+      >
+        Add
+      </button>
+    </form>
+  </div>
+
+  <!-- Site List (Prioritized) -->
+  <div id="siteList" class="space-y-2 mb-4">
+    <!-- Sites will be inserted here via JavaScript -->
+  </div>
+
+  <!-- Empty State -->
+  <div id="emptyState" class="empty-state hidden flex flex-col items-center justify-center text-center text-gray-500 mb-4">
+    <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+    </svg>
+    <p class="text-sm">No blocked sites yet.<br>Add some sites to get started!</p>
+  </div>
+
+  <!-- Redirect Settings Section (Secondary) -->
+  <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+    <h2 class="text-sm font-semibold text-gray-700 mb-2">Redirect Settings</h2>
+    <form id="redirectForm" class="flex gap-2 mb-2">
+      <div class="flex-1">
+        <input
+                type="url"
+                id="redirectInput"
+                placeholder="Enter redirect URL"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
+        >
+      </div>
+      <button
+              type="submit"
+              class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm"
+      >
+        Save
+      </button>
+    </form>
+    <p id="currentRedirect" class="text-xs text-gray-500"></p>
+  </div>
+
+  <!-- Focus Mode Toggle (De-emphasized) -->
+  <div class="bg-gray-100 rounded-lg p-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <label class="switch">
+        <input type="checkbox" id="toggleSwitch" checked>
+        <span class="slider"></span>
+      </label>
+      <span class="text-sm text-gray-600">Focus Mode</span>
+    </div>
+    <span class="text-xs text-gray-500">Toggle blocking on/off</span>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmModal" class="modal">
+    <div class="bg-white rounded-lg p-6 max-w-sm mx-4 text-center">
+      <h3 class="text-xl font-bold text-gray-900 mb-4">Are you sure it's worth it?</h3>
+      <p id="countdown" class="text-4xl font-bold text-blue-600 mb-4">5</p>
+      <p class="text-gray-600 mb-4">Time is your most valuable asset.</p>
+      <button id="confirmBtn" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+        Yes, disable Focus Mode
+      </button>
+      <button id="cancelBtn" class="mt-2 text-gray-600 hover:text-gray-800">
+        Keep Focus Mode On
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<div id="removeSiteModal" class="modal">
+  <div class="bg-white rounded-lg p-6 max-w-sm mx-4 text-center">
+    <h3 class="text-xl font-bold text-gray-900 mb-4">Remove this site?</h3>
+    <p class="text-gray-600 mb-2">Are you sure you want to remove:</p>
+    <p id="siteToRemove" class="font-semibold text-blue-600 mb-4"></p>
+    <p id="removeCountdown" class="text-4xl font-bold text-blue-600 mb-4">5</p>
+    <button id="confirmRemoveBtn" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+      Yes, remove site
+    </button>
+    <button id="cancelRemoveBtn" class="mt-2 text-gray-600 hover:text-gray-800">
+      Keep site blocked
+    </button>
+  </div>
+</div>
+
+
+<script src="popup.js"></script>
+</body>
+</html>
